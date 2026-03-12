@@ -33,6 +33,9 @@ jobs:
       - name: Push Docker image
         run: |
           docker push ghcr.io/${{ env.REPO_LC }}:latest
+          
+      - name: Debug port
+        run: echo "PORT=${{ secrets.SERVER_PORT }}"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
