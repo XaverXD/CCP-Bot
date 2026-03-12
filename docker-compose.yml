@@ -6,4 +6,4 @@ services:
     env_file:
       - .env
     volumes:
-      - ./database.yml:/app/config/database.yml
+      - ./database.yml:/app/database.yml
