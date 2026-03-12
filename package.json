@@ -1,0 +1,19 @@
+{
+  "name": "ccp-bot",
+  "version": "1.0.0",
+  "description": "A chinese Discord-Bot endorsed by Mao Zedong",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "XaverXD",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.6.1",
+    "quick-yaml.db": "^1.2.2"
+  }
+}
