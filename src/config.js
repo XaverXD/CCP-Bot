@@ -28,6 +28,6 @@ const config = {
         COMPONENT_NOT_PUBLIC: 'You are not the author of this button!',
         GUILD_COOLDOWN: 'You are currently in cooldown, you have the ability to re-use this command again in \`%cooldown%s\`.'
     }
-}34
+}
 
 module.exports = config;
