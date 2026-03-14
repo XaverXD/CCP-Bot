@@ -24,7 +24,7 @@ module.exports = new ApplicationCommand({
         ]
     },
     options: {
-        cooldown: 10000
+        cooldown: 3000
     },
     /**
      * 
