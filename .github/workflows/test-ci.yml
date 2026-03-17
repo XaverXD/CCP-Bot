@@ -1,0 +1,56 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Node.js & Docker CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CLIENT_TOKEN: ${{ secrets.TEST_CLIENT_TOKEN }}
+  GUILD_ID: ${{ secrets.TEST_GUILD_ID }}
+  OWNER_ID: ${{ secrets.TEST_OWNER_ID }}
+  DEVELOPER_IDS: ${{ secrets.TEST_DEVELOPER_IDS }}
+  
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    environment: test-ci
+
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install Dependencies
+      run: npm ci
+      
+    - name: Perform Bot-Smoketest
+      run: |
+        timeout 5s npm run start || EXIT_CODE=$?
+        if [ "$EXIT_CODE" -ne 124 ]; then
+          echo "Bot crashed!"
+          exit 1
+        fi
+
+    - name: Test Docker Build
+      run: docker build -t ccp-test .
