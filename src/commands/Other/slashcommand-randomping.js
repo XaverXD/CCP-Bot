@@ -1,6 +1,7 @@
 const { ChatInputCommandInteraction } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
+const { info, error, success } = require('../../utils/Console');
 
 module.exports = new ApplicationCommand({
     command: {
@@ -35,7 +36,16 @@ module.exports = new ApplicationCommand({
         const amount = interaction.options.getInteger("amount") ?? 1;
         const message = interaction.options.getString("message");
 
-        const members = await interaction.guild.members.fetch();
+        let members;
+        try {
+            members = await interaction.guild.members.fetch();
+        } catch (err) {
+            error('Error fetching members:', err);
+            return interaction.reply({
+                content: "Unable to fetch server members due to rate limits. Please try again later.",
+                ephemeral: true
+            });
+        }
 
         const users = members.filter(
             member => !member.user.bot && member.id !== interaction.user.id
