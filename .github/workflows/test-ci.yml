@@ -60,9 +60,6 @@ jobs:
     - name: Test Docker Build
       run: docker build -t ccp-test .
 
-    - name: Install coreutils in container
-      run: docker run --rm ccp-test sh -c 'apk add --no-cache coreutils'
-
     - name: Run Smoke Test inside Container
       run: |
         docker run --rm \
@@ -71,4 +68,4 @@ jobs:
         -e OWNER_ID=${{ secrets.TEST_OWNER_ID }} \
         -e DEVELOPER_IDS="${{ secrets.TEST_DEVELOPER_IDS }}" \
         ccp-test \
-        sh -c 'timeout --preserve-status 5s npm run start || EXIT_CODE=$?; if [ "$EXIT_CODE" -ne 124 ] && [ "$EXIT_CODE" -ne 137 ] && [ "$EXIT_CODE" -ne 143 ]; then exit 1; fi'
+        sh -c 'timeout 5s npm run start || EXIT_CODE=$?; if [ "$EXIT_CODE" -ne 124 ] && [ "$EXIT_CODE" -ne 137 ] && [ "$EXIT_CODE" -ne 143 ]; then exit 1; fi'
