@@ -16,7 +16,7 @@ env:
   DEVELOPER_IDS: ${{ secrets.TEST_DEVELOPER_IDS }}
   
 jobs:
-  test:
+  test-check:
     name: Test Node and Docker
     runs-on: ubuntu-latest
 
