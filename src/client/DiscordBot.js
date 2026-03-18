@@ -53,6 +53,7 @@ class DiscordBot extends Client {
             }
         });
         
+        this.slanderChannels = new Map();
         new CommandsListener(this);
         new ComponentsListener(this);
     }

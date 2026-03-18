@@ -1,6 +1,11 @@
 node_modules
 package-lock.json
 
+.vscode/*
+
+# Built Visual Studio Code Extensions
+*.vsix
+
 # Logs
 logs
 *.log
@@ -132,5 +137,8 @@ dist
 
 # DO NOT REMOVE THESE FOR SECURITY
 .env
+.env.prod
+.env.test
 database.yml
+data/*
 terminal.log
