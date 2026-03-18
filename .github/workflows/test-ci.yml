@@ -68,4 +68,4 @@ jobs:
         -e OWNER_ID=${{ secrets.TEST_OWNER_ID }} \
         -e DEVELOPER_IDS="${{ secrets.TEST_DEVELOPER_IDS }}" \
         ccp-test \
-        sh -c 'timeout 5s npm run start || EXIT_CODE=$?; if [ "$EXIT_CODE" -ne 124 ]; then exit 1; fi'
+        sh -c 'timeout --preserve-status 5s npm run start || EXIT_CODE=$?; if [ "$EXIT_CODE" -ne 124 ] && [ "$EXIT_CODE" -ne 137 ] && [ "$EXIT_CODE" -ne 143 ]; then exit 1; fi'
