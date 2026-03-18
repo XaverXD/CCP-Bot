@@ -63,9 +63,9 @@ jobs:
     - name: Run Smoke Test inside Container
       run: |
         docker run --rm \
-        -e CLIENT_TOKEN=$CLIENT_TOKEN \
-        -e GUILD_ID=$GUILD_ID \
-        -e OWNER_ID=$OWNER_ID \
-        -e DEVELOPER_IDS=$DEVELOPER_IDS \
+        -e CLIENT_TOKEN=$TEST_CLIENT_TOKEN \
+        -e GUILD_ID=$TEST_GUILD_ID \
+        -e OWNER_ID=$TEST_OWNER_ID \
+        -e DEVELOPER_IDS=$TEST_DEVELOPER_IDS \
         ccp-test \
         sh -c 'timeout 5s npm run start || EXIT_CODE=$?; if [ "$EXIT_CODE" -ne 124 ]; then exit 1; fi'
