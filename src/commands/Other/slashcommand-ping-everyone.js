@@ -18,20 +18,8 @@ module.exports = new ApplicationCommand({
      * @param {ChatInputCommandInteraction} interaction
      */
     run: async (client, interaction) => {
-        // Ensure only members with the MentionEveryone permission can use this command
-        if (
-            !interaction.memberPermissions ||
-            !interaction.memberPermissions.has(PermissionFlagsBits.MentionEveryone)
-        ) {
-            await interaction.reply({
-                content: 'You do not have permission to mention everyone.',
-                ephemeral: true
-            });
-            return;
-        }
-
         await interaction.reply({
             content: '@everyone'
         });
-    }  
+    }   
 }).toJSON();
