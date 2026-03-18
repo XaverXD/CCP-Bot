@@ -21,8 +21,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    environment: test-ci
-
     permissions:
       contents: read
 
