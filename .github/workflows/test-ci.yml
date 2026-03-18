@@ -7,15 +7,14 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
   merge_group:
     branches: [ "main" ]
 
-#env:
-#  CLIENT_TOKEN: ${{ secrets.TEST_CLIENT_TOKEN }}
-#  GUILD_ID: ${{ secrets.TEST_GUILD_ID }}
-#  OWNER_ID: ${{ secrets.TEST_OWNER_ID }}
-#  DEVELOPER_IDS: ${{ secrets.TEST_DEVELOPER_IDS }}
+env:
+  CLIENT_TOKEN: ${{ secrets.TEST_CLIENT_TOKEN }}
+  GUILD_ID: ${{ secrets.TEST_GUILD_ID }}
+  OWNER_ID: ${{ secrets.TEST_OWNER_ID }}
+  DEVELOPER_IDS: ${{ secrets.TEST_DEVELOPER_IDS }}
   
 jobs:
   test:
