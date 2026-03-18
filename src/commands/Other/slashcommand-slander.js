@@ -129,11 +129,11 @@ module.exports = new ApplicationCommand({
                 const triggersList = data.triggers.map((trigger, index) => {
                     const words = trigger.words.join(', ');
                     const gifs = trigger.gifs.join(', ');
-                    return `**${index + 1}.** Words: ${words}\nGIFs: ${gifs}`;
+                    return `**${index + 1}.** Words: ${words}\nGIFs: \`${gifs}\``;
                 }).join('\n\n');
 
                 return interaction.reply({
-                    content: `📋 **Slander Triggers:**\n\n\`\`\`\n${triggersList}\n\`\`\``,
+                    content: `📋 **Slander Triggers:**\n\n${triggersList}`,
                     ephemeral: true
                 });
             }
