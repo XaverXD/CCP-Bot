@@ -16,25 +16,25 @@ env:
   DEVELOPER_IDS: ${{ secrets.TEST_DEVELOPER_IDS }}
   
 jobs:
-  test-check:
+  test:
     name: Test Node and Docker
     runs-on: ubuntu-latest
 
-    #strategy:
-    #  fail-fast: false
-    #  matrix:
-    #    node-version: [18.x, 20.x]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v4
       
-    #- name: Setup Node.js ${{ matrix.node-version }}
-    - name: Setup Node.js
+    - name: Setup Node.js ${{ matrix.node-version }}
+    #- name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: ./package.json
         
