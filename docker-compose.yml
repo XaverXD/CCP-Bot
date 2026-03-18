@@ -7,3 +7,4 @@ services:
       - .env
     volumes:
       - ./database.yml:/app/database.yml
+      - ./data:/app/data
