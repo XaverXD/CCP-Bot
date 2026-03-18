@@ -8,9 +8,6 @@ module.exports = new Event({
     run: async (client, message) => {
         if (message.author.bot) return;
 
-        const isActive = client.slanderChannels.get(message.channel.id);
-        if (!isActive) return;
-
         await slanderHandler(message);
     }
 }).toJSON();
