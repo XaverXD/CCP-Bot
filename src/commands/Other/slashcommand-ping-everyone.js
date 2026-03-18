@@ -1,4 +1,4 @@
-const { ChatInputCommandInteraction, PermissionFlagsBits } = require("discord.js");
+const { ChatInputCommandInteraction } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 
@@ -20,6 +20,6 @@ module.exports = new ApplicationCommand({
     run: async (client, interaction) => {
         await interaction.reply({
             content: '@everyone'
-        });
-    }   
+        });Expand commentComment on lines R20 to R23Resolved
+    }  
 }).toJSON();
