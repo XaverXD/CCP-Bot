@@ -20,6 +20,6 @@ module.exports = new ApplicationCommand({
     run: async (client, interaction) => {
         await interaction.reply({
             content: '@everyone'
-        });Expand commentComment on lines R20 to R23Resolved
+        });
     }  
 }).toJSON();
