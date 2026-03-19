@@ -23,10 +23,24 @@ module.exports = new ApplicationCommand({
                 ]
             },
             {
-                name: 'clear',
+                name: 'clear-all',
                 description: 'Clear all slander triggers.',
                 type: 1, // SUB_COMMAND
                 options: []
+            },
+            {
+                name: 'clear',
+                description: 'Clear a specific slander trigger by index.',
+                type: 1, // SUB_COMMAND
+                options: [
+                    {
+                        name: 'index',
+                        description: 'The index of the trigger to clear (use /slander list to see indices).',
+                        type: 4, // INTEGER
+                        required: true,
+                        min_value: 1
+                    }
+                ]
             },
             {
                 name: 'list',
@@ -109,10 +123,37 @@ module.exports = new ApplicationCommand({
                 }
             }
 
-            case 'clear': {
+            case 'clear-all': {
                 save({ triggers: [] });
                 return interaction.reply({
                     content: '🗑️ All slander triggers have been cleared.',
+                    ephemeral: true
+                });
+            }
+
+            case 'clear': {
+                const index = interaction.options.getInteger('index') - 1; // Convert to 0-based index
+                const data = load();
+
+                if (!data.triggers || data.triggers.length === 0) {
+                    return interaction.reply({
+                        content: 'No slander triggers configured.',
+                        ephemeral: true
+                    });
+                }
+
+                if (index < 0 || index >= data.triggers.length) {
+                    return interaction.reply({
+                        content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                        ephemeral: true
+                    });
+                }
+
+                const removedTrigger = data.triggers.splice(index, 1)[0];
+                save(data);
+
+                return interaction.reply({
+                    content: `🗑️ Removed slander trigger: **${removedTrigger.words.join(', ')}**`,
                     ephemeral: true
                 });
             }
