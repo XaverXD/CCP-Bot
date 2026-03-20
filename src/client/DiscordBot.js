@@ -7,6 +7,8 @@ const ComponentsHandler = require("./handler/ComponentsHandler");
 const ComponentsListener = require("./handler/ComponentsListener");
 const EventsHandler = require("./handler/EventsHandler");
 const { QuickYAML } = require('quick-yaml.db');
+const fs = require('fs');
+const path = require('path');
 
 class DiscordBot extends Client {
     collection = {
@@ -32,7 +34,7 @@ class DiscordBot extends Client {
     commands_handler = new CommandsHandler(this);
     components_handler = new ComponentsHandler(this);
     events_handler = new EventsHandler(this);
-    database = new QuickYAML(config.database.path);
+    database;
 
     constructor() {
         super({
@@ -53,6 +55,20 @@ class DiscordBot extends Client {
             }
         });
         
+        // Create empty database.yml if it doesn't exist
+        const dbPath = config.database.path;
+        const dbDir = path.dirname(dbPath);
+        if (!fs.existsSync(dbDir)) {
+            fs.mkdirSync(dbDir, { recursive: true });
+        }
+        if (!fs.existsSync(dbPath)) {
+            fs.writeFileSync(dbPath, '');
+        }
+        
+        this.database = new QuickYAML(dbPath);
+        
+        this.slanderChannels = new Map();
+        this.slanderServers = new Map();
         new CommandsListener(this);
         new ComponentsListener(this);
     }
