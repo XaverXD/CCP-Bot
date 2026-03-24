@@ -30,15 +30,21 @@ module.exports = new ApplicationCommand({
             },
             {
                 name: 'clear',
-                description: 'Clear a specific slander trigger by index.',
+                description: 'Clear a specific slander trigger by index or trigger word.',
                 type: 1, // SUB_COMMAND
                 options: [
                     {
                         name: 'index',
                         description: 'The index of the trigger to clear (use /slander list to see indices).',
                         type: 4, // INTEGER
-                        required: true,
+                        required: false,
                         min_value: 1
+                    },
+                    {
+                        name: 'word',
+                        description: 'A trigger word to find and clear the associated trigger.',
+                        type: 3, // STRING
+                        required: false
                     }
                 ]
             },
@@ -132,7 +138,8 @@ module.exports = new ApplicationCommand({
             }
 
             case 'clear': {
-                const index = interaction.options.getInteger('index') - 1; // Convert to 0-based index
+                const index = interaction.options.getInteger('index');
+                const word = interaction.options.getString('word')?.toLowerCase().trim();
                 const data = load();
 
                 if (!data.triggers || data.triggers.length === 0) {
@@ -142,20 +149,58 @@ module.exports = new ApplicationCommand({
                     });
                 }
 
-                if (index < 0 || index >= data.triggers.length) {
+                if (index !== null && word !== undefined) {
                     return interaction.reply({
-                        content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                        content: 'Please provide either an index OR a trigger word, not both.',
                         ephemeral: true
                     });
                 }
 
-                const removedTrigger = data.triggers.splice(index, 1)[0];
-                save(data);
+                if (index === null && word === undefined) {
+                    return interaction.reply({
+                        content: 'Please provide either an index or a trigger word.',
+                        ephemeral: true
+                    });
+                }
 
-                return interaction.reply({
-                    content: `🗑️ Removed slander trigger: **${removedTrigger.words.join(', ')}**`,
-                    ephemeral: true
-                });
+                if (index !== null) {
+                    // Clear by index
+                    const indexZeroBased = index - 1;
+                    if (indexZeroBased < 0 || indexZeroBased >= data.triggers.length) {
+                        return interaction.reply({
+                            content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                            ephemeral: true
+                        });
+                    }
+
+                    const removedTrigger = data.triggers.splice(indexZeroBased, 1)[0];
+                    save(data);
+
+                    return interaction.reply({
+                        content: `🗑️ Removed slander trigger: **${removedTrigger.words.join(', ')}**`,
+                        ephemeral: true
+                    });
+                } else {
+                    // Clear by word
+                    const triggerIndex = data.triggers.findIndex(trigger =>
+                        trigger.words.some(triggerWord => triggerWord.toLowerCase() === word)
+                    );
+
+                    if (triggerIndex === -1) {
+                        return interaction.reply({
+                            content: `No trigger found containing the word "${word}". Use \`/slander list\` to see all triggers.`,
+                            ephemeral: true
+                        });
+                    }
+
+                    const removedTrigger = data.triggers.splice(triggerIndex, 1)[0];
+                    save(data);
+
+                    return interaction.reply({
+                        content: `🗑️ Removed slander trigger containing "${word}": **${removedTrigger.words.join(', ')}**`,
+                        ephemeral: true
+                    });
+                }
             }
 
             case 'list': {
@@ -194,13 +239,53 @@ module.exports = new ApplicationCommand({
                 }
 
                 const data = load();
-                data.triggers.push({ words, gifs });
-                save(data);
 
-                return interaction.reply({
-                    content: `✅ Added new slander trigger with words: ${words.join(', ')}`,
-                    ephemeral: true
-                });
+                // Check if any of the new words already exist in existing triggers
+                let existingTriggerIndex = -1;
+                for (let i = 0; i < data.triggers.length; i++) {
+                    const trigger = data.triggers[i];
+                    if (trigger.words.some(existingWord =>
+                        words.some(newWord => existingWord.toLowerCase() === newWord)
+                    )) {
+                        existingTriggerIndex = i;
+                        break;
+                    }
+                }
+
+                if (existingTriggerIndex !== -1) {
+                    // Add new words and GIFs to existing trigger
+                    const existingTrigger = data.triggers[existingTriggerIndex];
+
+                    // Add new words that don't already exist
+                    const newWords = words.filter(word =>
+                        !existingTrigger.words.some(existingWord =>
+                            existingWord.toLowerCase() === word
+                        )
+                    );
+                    existingTrigger.words.push(...newWords);
+
+                    // Add new GIFs that don't already exist
+                    const newGifs = gifs.filter(gif =>
+                        !existingTrigger.gifs.some(existingGif => existingGif === gif)
+                    );
+                    existingTrigger.gifs.push(...newGifs);
+
+                    save(data);
+
+                    return interaction.reply({
+                        content: `✅ Updated existing slander trigger with ${newWords.length} new words and ${newGifs.length} new GIFs.`,
+                        ephemeral: true
+                    });
+                } else {
+                    // Create new trigger
+                    data.triggers.push({ words, gifs });
+                    save(data);
+
+                    return interaction.reply({
+                        content: `✅ Added new slander trigger with words: ${words.join(', ')}`,
+                        ephemeral: true
+                    });
+                }
             }
 
             default:
