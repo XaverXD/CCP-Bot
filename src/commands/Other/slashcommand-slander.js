@@ -30,14 +30,26 @@ module.exports = new ApplicationCommand({
             },
             {
                 name: 'clear',
-                description: 'Clear a specific slander trigger by index.',
+                description: 'Clear triggers or remove specific URLs from triggers.',
                 type: 1, // SUB_COMMAND
                 options: [
                     {
+                        name: 'url',
+                        description: 'URL to remove from trigger(s). If no word/index specified, removes from all triggers containing it.',
+                        type: 3, // STRING
+                        required: false
+                    },
+                    {
+                        name: 'word',
+                        description: 'Specific trigger word to target (optional, for URL removal or complete trigger removal).',
+                        type: 3, // STRING
+                        required: false
+                    },
+                    {
                         name: 'index',
-                        description: 'The index of the trigger to clear (use /slander list to see indices).',
+                        description: 'Specific trigger index to target (optional, for URL removal or complete trigger removal).',
                         type: 4, // INTEGER
-                        required: true,
+                        required: false,
                         min_value: 1
                     }
                 ]
@@ -132,7 +144,9 @@ module.exports = new ApplicationCommand({
             }
 
             case 'clear': {
-                const index = interaction.options.getInteger('index') - 1; // Convert to 0-based index
+                const url = interaction.options.getString('url')?.trim();
+                const word = interaction.options.getString('word')?.toLowerCase().trim();
+                const index = interaction.options.getInteger('index');
                 const data = load();
 
                 if (!data.triggers || data.triggers.length === 0) {
@@ -142,20 +156,153 @@ module.exports = new ApplicationCommand({
                     });
                 }
 
-                if (index < 0 || index >= data.triggers.length) {
+                // Validation: Cannot specify both word and index
+                if (word && index !== null) {
                     return interaction.reply({
-                        content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                        content: 'Please specify either a word OR an index, not both.',
                         ephemeral: true
                     });
                 }
 
-                const removedTrigger = data.triggers.splice(index, 1)[0];
-                save(data);
+                // Validation: At least one parameter required
+                if (!url && !word && index === null) {
+                    return interaction.reply({
+                        content: 'Please provide a URL to remove, or a word/index to remove a complete trigger.',
+                        ephemeral: true
+                    });
+                }
 
-                return interaction.reply({
-                    content: `🗑️ Removed slander trigger: **${removedTrigger.words.join(', ')}**`,
-                    ephemeral: true
-                });
+                if (url) {
+                    // URL removal mode
+                    let affectedTriggers = [];
+                    let totalUrlsRemoved = 0;
+
+                    if (word || index !== null) {
+                        // Remove URL from specific trigger
+                        let targetTrigger;
+                        let targetIndex;
+
+                        if (index !== null) {
+                            const indexZeroBased = index - 1;
+                            if (indexZeroBased < 0 || indexZeroBased >= data.triggers.length) {
+                                return interaction.reply({
+                                    content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                                    ephemeral: true
+                                });
+                            }
+                            targetTrigger = data.triggers[indexZeroBased];
+                            targetIndex = indexZeroBased;
+                        } else {
+                            targetIndex = data.triggers.findIndex(trigger =>
+                                trigger.words.some(triggerWord => triggerWord.toLowerCase() === word)
+                            );
+
+                            if (targetIndex === -1) {
+                                return interaction.reply({
+                                    content: `No trigger found containing the word "${word}". Use \`/slander list\` to see all triggers.`,
+                                    ephemeral: true
+                                });
+                            }
+                            targetTrigger = data.triggers[targetIndex];
+                        }
+
+                        const urlIndex = targetTrigger.gifs.indexOf(url);
+                        if (urlIndex === -1) {
+                            return interaction.reply({
+                                content: `URL not found in the specified trigger. Available URLs: ${targetTrigger.gifs.map(g => `\`${g}\``).join(', ')}`,
+                                ephemeral: true
+                            });
+                        }
+
+                        targetTrigger.gifs.splice(urlIndex, 1);
+                        totalUrlsRemoved = 1;
+
+                        // If no URLs left, remove the entire trigger
+                        if (targetTrigger.gifs.length === 0) {
+                            data.triggers.splice(targetIndex, 1);
+                            save(data);
+                            return interaction.reply({
+                                content: `🗑️ Removed URL and deleted empty trigger: **${targetTrigger.words.join(', ')}**`,
+                                ephemeral: true
+                            });
+                        }
+
+                        affectedTriggers.push(targetTrigger.words.join(', '));
+                    } else {
+                        // Remove URL from all triggers
+                        for (let i = data.triggers.length - 1; i >= 0; i--) {
+                            const trigger = data.triggers[i];
+                            const urlIndex = trigger.gifs.indexOf(url);
+
+                            if (urlIndex !== -1) {
+                                trigger.gifs.splice(urlIndex, 1);
+                                totalUrlsRemoved++;
+
+                                // If no URLs left, remove the entire trigger
+                                if (trigger.gifs.length === 0) {
+                                    data.triggers.splice(i, 1);
+                                } else {
+                                    affectedTriggers.push(trigger.words.join(', '));
+                                }
+                            }
+                        }
+
+                        if (totalUrlsRemoved === 0) {
+                            return interaction.reply({
+                                content: `URL not found in any trigger.`,
+                                ephemeral: true
+                            });
+                        }
+                    }
+
+                    save(data);
+
+                    if (word || index !== null) {
+                        const identifier = index !== null ? `index ${index}` : `word "${word}"`;
+                        return interaction.reply({
+                            content: `🗑️ Removed URL from trigger (${identifier}). ${affectedTriggers[0] ? `Remaining URLs: ${data.triggers.find(t => t.words.join(', ') === affectedTriggers[0])?.gifs.length || 0}` : ''}`,
+                            ephemeral: true
+                        });
+                    } else {
+                        return interaction.reply({
+                            content: `🗑️ Removed URL from ${totalUrlsRemoved} trigger${totalUrlsRemoved > 1 ? 's' : ''}. ${affectedTriggers.length > 0 ? `Affected triggers: ${affectedTriggers.join(', ')}` : ''}`,
+                            ephemeral: true
+                        });
+                    }
+                } else {
+                    // Complete trigger removal mode
+                    let targetIndex;
+
+                    if (index !== null) {
+                        targetIndex = index - 1;
+                        if (targetIndex < 0 || targetIndex >= data.triggers.length) {
+                            return interaction.reply({
+                                content: `Invalid index. Please use \`/slander list\` to see available triggers (1-${data.triggers.length}).`,
+                                ephemeral: true
+                            });
+                        }
+                    } else {
+                        targetIndex = data.triggers.findIndex(trigger =>
+                            trigger.words.some(triggerWord => triggerWord.toLowerCase() === word)
+                        );
+
+                        if (targetIndex === -1) {
+                            return interaction.reply({
+                                content: `No trigger found containing the word "${word}". Use \`/slander list\` to see all triggers.`,
+                                ephemeral: true
+                            });
+                        }
+                    }
+
+                    const removedTrigger = data.triggers.splice(targetIndex, 1)[0];
+                    save(data);
+
+                    const identifier = index !== null ? `index ${index}` : `word "${word}"`;
+                    return interaction.reply({
+                        content: `🗑️ Removed complete slander trigger (${identifier}): **${removedTrigger.words.join(', ')}**`,
+                        ephemeral: true
+                    });
+                }
             }
 
             case 'list': {
@@ -194,13 +341,53 @@ module.exports = new ApplicationCommand({
                 }
 
                 const data = load();
-                data.triggers.push({ words, gifs });
-                save(data);
 
-                return interaction.reply({
-                    content: `✅ Added new slander trigger with words: ${words.join(', ')}`,
-                    ephemeral: true
-                });
+                // Check if any of the new words already exist in existing triggers
+                let existingTriggerIndex = -1;
+                for (let i = 0; i < data.triggers.length; i++) {
+                    const trigger = data.triggers[i];
+                    if (trigger.words.some(existingWord =>
+                        words.some(newWord => existingWord.toLowerCase() === newWord)
+                    )) {
+                        existingTriggerIndex = i;
+                        break;
+                    }
+                }
+
+                if (existingTriggerIndex !== -1) {
+                    // Add new words and GIFs to existing trigger
+                    const existingTrigger = data.triggers[existingTriggerIndex];
+
+                    // Add new words that don't already exist
+                    const newWords = words.filter(word =>
+                        !existingTrigger.words.some(existingWord =>
+                            existingWord.toLowerCase() === word
+                        )
+                    );
+                    existingTrigger.words.push(...newWords);
+
+                    // Add new GIFs that don't already exist
+                    const newGifs = gifs.filter(gif =>
+                        !existingTrigger.gifs.some(existingGif => existingGif === gif)
+                    );
+                    existingTrigger.gifs.push(...newGifs);
+
+                    save(data);
+
+                    return interaction.reply({
+                        content: `✅ Updated existing slander trigger with ${newWords.length} new words and ${newGifs.length} new GIFs.`,
+                        ephemeral: true
+                    });
+                } else {
+                    // Create new trigger
+                    data.triggers.push({ words, gifs });
+                    save(data);
+
+                    return interaction.reply({
+                        content: `✅ Added new slander trigger with words: ${words.join(', ')}`,
+                        ephemeral: true
+                    });
+                }
             }
 
             default:
