@@ -1,4 +1,4 @@
-const { ChatInputCommandInteraction } = require("discord.js");
+const { ChatInputCommandInteraction, EmbedBuilder } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const { load, save } = require("../../utils/slanderStore");
@@ -314,14 +314,51 @@ module.exports = new ApplicationCommand({
                     });
                 }
 
-                const triggersList = data.triggers.map((trigger, index) => {
+                const embeds = [];
+                let currentEmbed = new EmbedBuilder()
+                    .setTitle('📋 Slander Triggers')
+                    .setColor(0x0099FF)
+                    .setTimestamp();
+
+                let currentDescription = '';
+
+                for (let i = 0; i < data.triggers.length; i++) {
+                    const trigger = data.triggers[i];
                     const words = trigger.words.join(', ');
-                    const gifs = trigger.gifs.join(', ');
-                    return `**${index + 1}.** Words: ${words}\nGIFs: \`${gifs}\``;
-                }).join('\n\n');
+                    const gifs = trigger.gifs.map(g => `\`${g}\``).join(', ');
+
+                    const triggerText = `**${i + 1}.** Words: ${words}\nGIFs: ${gifs}\n\n`;
+
+                    // Check if adding this trigger would exceed embed description limit (4096 chars)
+                    if (currentDescription.length + triggerText.length > 4000) {
+                        // Add current embed to array and start new one
+                        currentEmbed.setDescription(currentDescription.trim());
+                        embeds.push(currentEmbed);
+
+                        currentEmbed = new EmbedBuilder()
+                            .setTitle(`📋 Slander Triggers (continued)`)
+                            .setColor(0x0099FF)
+                            .setTimestamp();
+
+                        currentDescription = triggerText;
+                    } else {
+                        currentDescription += triggerText;
+                    }
+                }
+
+                // Add the last embed
+                if (currentDescription.length > 0) {
+                    currentEmbed.setDescription(currentDescription.trim());
+                    embeds.push(currentEmbed);
+                }
+
+                // Add footer with total count
+                embeds[embeds.length - 1].setFooter({
+                    text: `Total triggers: ${data.triggers.length}`
+                });
 
                 return interaction.reply({
-                    content: `📋 **Slander Triggers:**\n\n${triggersList}`,
+                    embeds: embeds,
                     ephemeral: true
                 });
             }
