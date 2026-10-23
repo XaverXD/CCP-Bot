@@ -99,34 +99,32 @@ module.exports = new ApplicationCommand({
                 const guildId = interaction.guild.id;
 
                 if (global) {
-                    const isActive = client.slanderServers?.get(guildId);
+                    const key = 'slander-server-' + guildId;
 
-                    if (isActive) {
-                        client.slanderServers.delete(guildId);
+                    if (client.database.has(key)) {
+                        client.database.delete(key);
                         return interaction.reply({
                             content: '❌ Slander deactivated globally.',
                             ephemeral: true
                         });
                     } else {
-                        if (!client.slanderServers) client.slanderServers = new Map();
-                        client.slanderServers.set(guildId, true);
+                        client.database.set(key, true);
                         return interaction.reply({
                             content: '✅ Slander activated globally for the server.',
                             ephemeral: true
                         });
                     }
                 } else {
-                    const channelId = interaction.channel.id;
-                    const isActive = client.slanderChannels.get(channelId);
+                    const key = 'slander-channel-' + interaction.channel.id;
 
-                    if (isActive) {
-                        client.slanderChannels.delete(channelId);
+                    if (client.database.has(key)) {
+                        client.database.delete(key);
                         return interaction.reply({
                             content: '❌ Slander deactivated in this channel.',
                             ephemeral: true
                         });
                     } else {
-                        client.slanderChannels.set(channelId, true);
+                        client.database.set(key, true);
                         return interaction.reply({
                             content: '✅ Slander activated in this channel.',
                             ephemeral: true
