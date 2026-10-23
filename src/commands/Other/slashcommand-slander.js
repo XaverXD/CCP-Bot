@@ -1,4 +1,16 @@
-const { ChatInputCommandInteraction, EmbedBuilder } = require("discord.js");
+const {
+    ChatInputCommandInteraction,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ComponentType,
+    ContainerBuilder,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
+    MessageFlags,
+    SeparatorBuilder,
+    TextDisplayBuilder
+} = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const { load, save } = require("../../utils/slanderStore");
@@ -58,7 +70,16 @@ module.exports = new ApplicationCommand({
                 name: 'list',
                 description: 'List all slander triggers.',
                 type: 1, // SUB_COMMAND
-                options: []
+                options: [
+                    {
+                        name: 'trigger',
+                        description: 'Jump directly to a specific trigger.',
+                        type: 4, // INTEGER
+                        required: false,
+                        min_value: 1,
+                        autocomplete: true
+                    }
+                ]
             },
             {
                 name: 'add',
@@ -312,53 +333,122 @@ module.exports = new ApplicationCommand({
                     });
                 }
 
-                const embeds = [];
-                let currentEmbed = new EmbedBuilder()
-                    .setTitle('📋 Slander Triggers')
-                    .setColor(0x0099FF)
-                    .setTimestamp();
+                // One trigger per page, shown as a Components V2 message so the GIFs render in a media gallery
+                const MAX_GALLERY_ITEMS = 10; // Discord limit per media gallery
+                const triggers = data.triggers;
+                const requestedTrigger = interaction.options.getInteger('trigger');
 
-                let currentDescription = '';
+                if (requestedTrigger !== null && requestedTrigger > triggers.length) {
+                    return interaction.reply({
+                        content: `Invalid trigger. Please choose a trigger between 1 and ${triggers.length}.`,
+                        ephemeral: true
+                    });
+                }
 
-                for (let i = 0; i < data.triggers.length; i++) {
-                    const trigger = data.triggers[i];
-                    const words = trigger.words.join(', ');
-                    const gifs = trigger.gifs.map(g => `\`${g}\``).join(', ');
+                let pageIndex = requestedTrigger !== null ? requestedTrigger - 1 : 0;
 
-                    const triggerText = `**${i + 1}.** Words: ${words}\nGIFs: ${gifs}\n\n`;
+                const truncate = (text, max) => text.length > max ? text.slice(0, max - 1) + '…' : text;
 
-                    // Check if adding this trigger would exceed embed description limit (4096 chars)
-                    if (currentDescription.length + triggerText.length > 4000) {
-                        // Add current embed to array and start new one
-                        currentEmbed.setDescription(currentDescription.trim());
-                        embeds.push(currentEmbed);
+                const buildPage = (disabled = false) => {
+                    const trigger = triggers[pageIndex];
+                    const gifs = trigger.gifs || [];
+                    // Invalid URLs would make Discord reject the whole message
+                    const galleryGifs = gifs.filter(g => /^https?:\/\//i.test(g)).slice(0, MAX_GALLERY_ITEMS);
 
-                        currentEmbed = new EmbedBuilder()
-                            .setTitle(`📋 Slander Triggers (continued)`)
-                            .setColor(0x0099FF)
-                            .setTimestamp();
+                    const container = new ContainerBuilder()
+                        .setAccentColor(0x0099FF)
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`## 📋 Slander Trigger ${pageIndex + 1}/${triggers.length}`),
+                            new TextDisplayBuilder().setContent(`**Words:** ${truncate(trigger.words.join(', '), 1000)}`)
+                        );
 
-                        currentDescription = triggerText;
-                    } else {
-                        currentDescription += triggerText;
+                    if (galleryGifs.length > 0) {
+                        container.addMediaGalleryComponents(
+                            new MediaGalleryBuilder().addItems(
+                                galleryGifs.map(gif => new MediaGalleryItemBuilder().setURL(gif))
+                            )
+                        );
                     }
-                }
 
-                // Add the last embed
-                if (currentDescription.length > 0) {
-                    currentEmbed.setDescription(currentDescription.trim());
-                    embeds.push(currentEmbed);
-                }
+                    // Raw URLs are still listed so they can be copied for `/slander clear url:`
+                    const urlList = gifs.map((g, i) => `${i + 1}. ${g}`).join('\n');
+                    const hiddenCount = gifs.length - galleryGifs.length;
 
-                // Add footer with total count
-                embeds[embeds.length - 1].setFooter({
-                    text: `Total triggers: ${data.triggers.length}`
+                    container
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(truncate(
+                                `-# ${hiddenCount > 0 ? `${hiddenCount} more not shown in the gallery\n` : ''}${urlList || 'No GIFs'}`.replace(/\n/g, '\n-# '),
+                                2500
+                            ))
+                        )
+                        .addSeparatorComponents(new SeparatorBuilder());
+
+                    if (triggers.length > 1) {
+                        container.addActionRowComponents(new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('slander-list-first')
+                                .setEmoji('⏮️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(disabled || pageIndex === 0),
+                            new ButtonBuilder()
+                                .setCustomId('slander-list-prev')
+                                .setEmoji('◀️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(disabled || pageIndex === 0),
+                            new ButtonBuilder()
+                                .setCustomId('slander-list-next')
+                                .setEmoji('▶️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(disabled || pageIndex === triggers.length - 1),
+                            new ButtonBuilder()
+                                .setCustomId('slander-list-last')
+                                .setEmoji('⏭️')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(disabled || pageIndex === triggers.length - 1)
+                        ));
+                    }
+
+                    return [container];
+                };
+
+                const response = await interaction.reply({
+                    components: buildPage(),
+                    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+                    withResponse: true
                 });
 
-                return interaction.reply({
-                    embeds: embeds,
-                    ephemeral: true
+                if (triggers.length <= 1) return;
+
+                const collector = response.resource.message.createMessageComponentCollector({
+                    componentType: ComponentType.Button,
+                    time: 5 * 60 * 1000
                 });
+
+                collector.on('collect', async (buttonInteraction) => {
+                    switch (buttonInteraction.customId) {
+                        case 'slander-list-first': pageIndex = 0; break;
+                        case 'slander-list-prev': pageIndex = Math.max(0, pageIndex - 1); break;
+                        case 'slander-list-next': pageIndex = Math.min(triggers.length - 1, pageIndex + 1); break;
+                        case 'slander-list-last': pageIndex = triggers.length - 1; break;
+                    }
+
+                    try {
+                        await buttonInteraction.update({ components: buildPage() });
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+
+                // Disable the buttons once the collector expires
+                collector.on('end', async () => {
+                    try {
+                        await interaction.editReply({ components: buildPage(true) });
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+
+                return;
             }
 
             case 'add': {
