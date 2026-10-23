@@ -66,9 +66,7 @@ class DiscordBot extends Client {
         }
         
         this.database = new QuickYAML(dbPath);
-        
-        this.slanderChannels = new Map();
-        this.slanderServers = new Map();
+
         new CommandsListener(this);
         new ComponentsListener(this);
     }

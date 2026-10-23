@@ -2,7 +2,11 @@ const { load } = require("./slanderStore");
 
 module.exports = async (message) => {
     // Check if slander is enabled globally for the server or in this channel
-    if (!message.client.slanderServers?.has(message.guild.id) && !message.client.slanderChannels.has(message.channel.id)) {
+    if (!message.guild) return;
+
+    const database = message.client.database;
+
+    if (!database.has('slander-server-' + message.guild.id) && !database.has('slander-channel-' + message.channel.id)) {
         return;
     }
 
